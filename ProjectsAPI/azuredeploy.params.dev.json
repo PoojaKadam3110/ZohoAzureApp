@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    //"DBConnections": "Server=10.235.3.8\\SQL2019STDMPNNEW;DataBase=TSProjectDetailsZoho,;User=sa;Password=zcon@123;TrustServerCertificate=true;"
+    "DBConnections": "Server=10.235.3.8\\SQL2019STDMPNNEW;DataBase=TSProjectDetailsZoho;User=sa;Password=zcon@123;TrustServerCertificate=true;",
+    //"AuthConnectionString": "Server=10.235.3.8\\SQL2019STDMPNNEW;DataBase=TSAuthProjectDetailsZoho;User=sa;Password=zcon@123;TrustServerCertificate=true",
+    "JwtSecretKey": "dqfegyhuitgjhreygegeuriurrijkPOOJAbhbdhhdfj",
+    "DeploymentEnvironment": "dev",
+    "DemoUsername": "pooja@kadam.com",
+    "DemoPassword": "Admin@123"
+  }
+}

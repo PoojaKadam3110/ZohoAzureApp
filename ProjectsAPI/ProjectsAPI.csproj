@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AzureFunctionsVersion>v4</AzureFunctionsVersion>
+    <UserSecretsId>c256aaaa-c3e8-400c-b516-6b46b25acda7</UserSecretsId>
+    <Configurations>Debug;Release;development;production</Configurations>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.OpenApi" Version="1.0.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.2.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Serilog" Version="3.0.1" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="host.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="local.settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>	
+	<Choose>
+		<When Condition="'$(Configuration)' == 'Development'">
+			<ItemGroup>
+				<None Include="azuredeploy.params.dev.json" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" />
+				<None Include="azuredeploy.params.dev.json" CopyToOutputDirectory="Always" CopyToPublishDirectory="PreserveNewest" />
+				<Content Remove="azuredeploy.params.dev.*.json;local.settings.json" />
+			</ItemGroup>
+		</When>
+		
+		<When Condition="'$(Configuration)' == 'Production'">
+			<ItemGroup>
+				<None Include="azuredeploy.params.prod.json" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" />
+				<None Include="azuredeploy.params.prod.json" CopyToOutputDirectory="Always" CopyToPublishDirectory="PreserveNewest" />
+				<Content Remove="azuredeploy.params.prod.*.json;local.settings.json" />
+			</ItemGroup>
+		</When>
+		
+		<!--
+		<When Condition="'$(Configuration)' == 'Staging'">
+			<ItemGroup>
+				<None Include="appsettings.Staging.json" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" />
+				<None Include="appsettings.json" CopyToOutputDirectory="Always" CopyToPublishDirectory="PreserveNewest" />
+				<Content Remove="appsettings.*.json;appsettings.json" />
+			</ItemGroup>
+		</When>
+		<Otherwise>
+			<ItemGroup>
+				<None Include="appsettings.json" CopyToOutputDirectory="Always" CopyToPublishDirectory="PreserveNewest" />
+				<Content Remove="appsettings.*.json;appsettings.json" />
+			</ItemGroup>
+		</Otherwise>
+		-->
+	</Choose>
+	<ItemGroup>
+		<Content Include="appsettings.Development.json" />
+		<Content Include="appsettings.Production.json" />
+	</ItemGroup>	
+	
+</Project>
