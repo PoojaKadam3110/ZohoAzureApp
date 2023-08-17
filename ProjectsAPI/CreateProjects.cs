@@ -14,38 +14,50 @@ using Microsoft.EntityFrameworkCore;
 using ProjectsAPI.DataAccessLayer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using ProjectsAPI.Services;
+using ProjectsAPI.Generic;
 
 namespace ProjectsAPI
 {
-    public static class CreateProjects
+    public class CreateProjects
     {
+        private readonly IUnitOfWork _unitOfWork;
+        public CreateProjects(IUnitOfWork unitOfWork)
+        {
+            _unitOfWork = unitOfWork;
+        }
         [FunctionName("CreateProjects")]
         [OpenApiOperation(operationId: "Run", tags: new[] { "Projects API" })]
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(CreateRequest), Description = "The request data.")]
-        public static async Task<IActionResult> AddProjects(
+        public async Task<IActionResult> AddProjects(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = "CreateProjects")] HttpRequest req,
             ILogger log, ExecutionContext context)
         {
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             var _input_data = JsonConvert.DeserializeObject<Projects>(requestBody);
-            _input_data.isActive = true;
-            _input_data.isDeleted = false;
-            _input_data.CreatedDate = DateTime.Now;
-            _input_data.CreatedBy = "Pooja";
-            _input_data.UpdatedDate = DateTime.Now;
-            _input_data.UpdatedBy = "Pooja";
             try
             {
+                
+                //var data = await _service.AddAsync(_input_data);
+                var data = await _unitOfWork.Projects.AddAsync(_input_data);
 
-                string defaultConnection = Environment.GetEnvironmentVariable("DBConnections");
-                var options = new DbContextOptionsBuilder<SQLDBContext>();
-                options.UseSqlServer(defaultConnection);
+                var result = data;
 
-                var _dbContext = new SQLDBContext(options.Options);
+                //return new OkObjectResult(result);
+                log.LogInformation("# HTTP Trigger Project Save successfully!!!");
 
-                _dbContext.Projects.Add(_input_data);
-                await _dbContext.SaveChangesAsync();
+                //return new ObjectResult(_input_data)
+                //{
+                //    StatusCode = (int)HttpStatusCode.Created
+                //};
+
+                var responseMessage = "Project Save successfully!!!";
+                var responseObject = new { Message = responseMessage}; //, Id = _input_data.Id, Data = _input_data 
+                return new ObjectResult(responseObject)
+                {
+                    StatusCode = (int)HttpStatusCode.Created
+                };
 
             }
             catch (Exception e)
@@ -53,13 +65,6 @@ namespace ProjectsAPI
                 log.LogError(e.ToString());
                 return new ObjectResult(e.ToString());
             }
-            log.LogInformation("# HTTP Trigger Project Save successfully!!!");
-            //return new OkObjectResult(HttpStatusCode.Created);
-
-            return new ObjectResult(_input_data)
-            {
-                StatusCode = (int)HttpStatusCode.Created
-            };
         }
         public class CreateRequest
         {

@@ -37,6 +37,7 @@ namespace ProjectsAPI.Services
             }
 
             existingProject.isDeleted = true;
+            existingProject.isActive = false;
 
             await _dbContext.SaveChangesAsync();
 
@@ -50,7 +51,7 @@ namespace ProjectsAPI.Services
 
         public async Task<Projects> GetByIdAsync(int id)
         {
-            return await _dbContext.Projects.Where(p => !p.isDeleted).FirstOrDefaultAsync();
+            return await _dbContext.Projects.Where(p => !p.isDeleted).FirstOrDefaultAsync(r => r.Id == id);
         }
 
         public async Task<Projects> UpdateAsync(Projects entity, int id)

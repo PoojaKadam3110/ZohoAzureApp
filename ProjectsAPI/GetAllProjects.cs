@@ -20,53 +20,101 @@ using Microsoft.Extensions.Options;
 using System.Linq;
 using System.Data;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using ProjectsAPI.Generic;
+using ProjectsAPI.Interfaces;
+using Microsoft.OpenApi.Models;
+using Microsoft.SqlServer.Management.Smo;
+using System.ComponentModel;
+using System.Net;
 
 namespace ProjectsAPI
 {
     //private SQLDBContext dataconnection;
 
-    public static class GetAllProjects
+    public class GetAllProjects
     {
-        private static readonly IMyService service;
+        private readonly IUnitOfWork _unitOfWork;
+
+        public GetAllProjects(IUnitOfWork unitOfWork)
+        {
+            _unitOfWork = unitOfWork;
+
+        }
+
         [FunctionName("GetAllProjects")]
         [OpenApiOperation(operationId: "Run", tags: new[] { "Projects API" })]
+        [OpenApiParameter(name: "projectName", In = ParameterLocation.Query, Required = false, Type = typeof(string))]
+        [OpenApiParameter(name: "orderByColumn", In = ParameterLocation.Query, Required = false, Type = typeof(string), Description = "Id")]
+        [OpenApiParameter(name: "isDescending", In = ParameterLocation.Query, Required = false, Type = typeof(string), Description = "false")]
+        [OpenApiParameter(name: "pageSize", In = ParameterLocation.Query, Required = false, Type = typeof(string), Description = "1000")]
+        [OpenApiParameter(name: "pageNumber", In = ParameterLocation.Query, Required = false, Type = typeof(string), Description = "1")]
         //[OpenApiRequestBody(contentType: "application/json", bodyType: typeof(Projects), Description = "The request data.")]
-        
-        public static async Task<List<Projects>> GetAllProjectsDetails(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "GetAllProjects")] HttpRequest req,
-            ILogger log, ExecutionContext context)
+
+        public async Task<IEnumerable<Projects>> GetAllProjectsDetails(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "GetAllProjects")] HttpRequest req,
+            ILogger log)
         {
-
-            var conn = Environment.GetEnvironmentVariable("DBConnections");
-            var projects = new List<Projects>();
-            try
+            string projectName = null;//req.Query["projectName"];
+            if (req.Query.ContainsKey("projectName"))
             {
-
-           //     var config = new ConfigurationBuilder()
-           //.SetBasePath(context.FunctionAppDirectory)
-           //.AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
-           //.AddEnvironmentVariables()
-           //.Build();
-
-           //     string connectionString = config["DBConnections"];
-
-
-                log.LogInformation(conn);
-                var options = new DbContextOptionsBuilder<SQLDBContext>();
-                options.UseSqlServer(conn);
-
-                var _dbContext = new SQLDBContext(options.Options);
-
-                projects = await _dbContext.Projects.Where(p => !p.isDeleted).ToListAsync();
+                projectName = req.Query["projectName"]; 
             }
-            catch (Exception e)
+            string orderByColumn = "Id"; //req.Query["orderByColumn"];
+            if (req.Query.ContainsKey("orderByColumn"))
             {
-                log.LogError(e.ToString());
+                orderByColumn = req.Query["orderByColumn"];
+            }
+            bool isDescending = false; //= bool.Parse(req.Query["isDescending"]);
+            if (req.Query.ContainsKey("isDescending"))
+            {
+                isDescending = bool.Parse(req.Query["isDescending"]);
+            }
+            int pageSize = 1000;//int.Parse(req.Query["pageSize"]);
+            if (req.Query.ContainsKey("pageSize"))
+            {
+                pageSize = int.Parse(req.Query["pageSize"]);
+            }
+            int pageNumber = 1;// int.Parse(req.Query["pageNumber"]);
+            if (req.Query.ContainsKey("pageNumber"))
+            {
+                pageNumber = int.Parse(req.Query["pageNumber"]);
             }
 
-            log.LogInformation("C# HTTP trigger function Display Projects Successfully!!!");
-            return projects;
+            var data = await _unitOfWork.Projects.GetAllAsync(projectName, orderByColumn, isDescending, pageSize, pageNumber);
 
+            var result = data.Where(x => !x.isDeleted);
+
+            if (result == null || !result.Any())
+            {
+                return null;
+            }
+
+            return result;
+        }
+
+        [FunctionName("GetActiveProjects")]
+        [OpenApiOperation(operationId: "Run", tags: new[] { "Projects API" })]
+        public async Task<IActionResult> GetActiveProjectsDetails(
+           [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "GetActiveProjects")] HttpRequest req,
+           ILogger log)
+        {
+            int count = _unitOfWork.Projects.GetRecordCount();
+
+            if(count == 0)
+            {
+                var responseMessage = "Not Active Projects in the database";
+                var responseNoObject = new { Message = responseMessage };  
+                return new ObjectResult(responseNoObject)
+                {
+                    StatusCode = (int)HttpStatusCode.NotFound
+                };
+            }
+
+            var responseObject = new { Active_Projects = count }; //, Id = _input_data.Id, Data = _input_data 
+            return new ObjectResult(responseObject)
+            {
+                StatusCode = (int)HttpStatusCode.OK
+            };
         }
     }
 }

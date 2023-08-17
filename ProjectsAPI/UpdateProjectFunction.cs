@@ -13,60 +13,68 @@ using ProjectsAPI.DataAccessLayer;
 using ProjectsAPI.Model;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.OpenApi.Models;
+using ProjectsAPI.Services;
+using Microsoft.EntityFrameworkCore.Metadata;
+using ProjectsAPI.Generic;
+using System.Net;
 
 namespace ProjectsAPI
 {
-    public static class UpdateProjectFunction
+    public class UpdateProjectFunction
     {
-       
+        private readonly IUnitOfWork _unitOfWork;
+
+        public UpdateProjectFunction(IUnitOfWork unitOfWork)
+        {
+            _unitOfWork = unitOfWork;
+        }
+
         [FunctionName("UpdateProjects")]
         [OpenApiOperation(operationId: "Run", tags: new[] { "Projects API" })]
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(UpdateRequest), Description = "The request data.")]
 
-        public static async Task<IActionResult> UpdateProjectDetails(
+        public async Task<IActionResult> UpdateProjectDetails(
             [HttpTrigger(AuthorizationLevel.Function, "put", Route = "UpdateProjects")] HttpRequest req,
-            ILogger log, ExecutionContext context)
+            ILogger log)
         {            
             try
             {
-                var conn = Environment.GetEnvironmentVariable("DBConnections");
-
-                var optionsBuilder = new DbContextOptionsBuilder<SQLDBContext>();
-                optionsBuilder.UseSqlServer(conn);
-
-                using var dbContext = new SQLDBContext(optionsBuilder.Options);
-
-              
-
-                // Update project properties based on req.Body or other input
-                // For example: projectToUpdate.Name = updatedName;
-                // Read the request body
                 string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
                 var updatedData = Newtonsoft.Json.JsonConvert.DeserializeObject<Projects>(requestBody);
 
                 int idFromRequestBody = updatedData.Id;
 
-                var projectToUpdate = await dbContext.Projects.FindAsync(idFromRequestBody);
+                //var projectToUpdate = await dbContext.Projects.FindAsync(idFromRequestBody);
+
+                var projectToUpdate = await _unitOfWork.Projects.GetByIdAsync(idFromRequestBody);
 
                 if (projectToUpdate == null || projectToUpdate.isDeleted == true)
                 {
-                    return new NotFoundObjectResult("Project Id  Not Found!!!");
+                    var responseMessageNotFound = "Project Id " + idFromRequestBody + " Not Found!!!";
+
+                    var responseNotFoundObject = new { Id = updatedData.Id, Message = responseMessageNotFound }; //, Id = _input_data.Id, Data = _input_data 
+                    return new ObjectResult(responseNotFoundObject)
+                    {
+                        StatusCode = (int)HttpStatusCode.NotFound
+                    };
                 }
 
-                // Update project properties
-                projectToUpdate.ProjectName = updatedData.ProjectName;
-                projectToUpdate.ClientName = updatedData.ClientName;
-                projectToUpdate.projectCost = updatedData.projectCost;
-                projectToUpdate.projectManager = updatedData.projectManager;
-                projectToUpdate.ratePerHour = updatedData.ratePerHour;
-                projectToUpdate.projectUsers = updatedData.projectUsers;
-                projectToUpdate.UpdatedDate = DateTime.Now;
+                var data = await _unitOfWork.Projects.UpdateAsync(updatedData);
 
 
-                await dbContext.SaveChangesAsync();
+
+               // await dbContext.SaveChangesAsync();
                 log.LogInformation("C# HTTP trigger function Project of Id Updated Successfully!!!");
 
-                return new OkObjectResult(projectToUpdate);
+                var responseMessage = "Project Updated successfully!!!";
+
+                var responseObject = new {Id = updatedData.Id, Message = responseMessage}; //, Id = _input_data.Id, Data = _input_data 
+                return new ObjectResult(responseObject)
+                {
+                    StatusCode = (int)HttpStatusCode.OK
+                };
+
+                //return new OkObjectResult(updatedData);
             }
             catch (Exception e)
             {

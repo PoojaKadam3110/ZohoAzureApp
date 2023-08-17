@@ -12,49 +12,62 @@ using Microsoft.EntityFrameworkCore;
 using ProjectsAPI.DataAccessLayer;
 using ProjectsAPI.Model;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using ProjectsAPI.Services;
+using ProjectsAPI.Generic;
+using System.Net;
+using Microsoft.CodeAnalysis;
 
 namespace ProjectsAPI
 {
-    public static class DeleteProject
+    public class DeleteProject
     {
+        private readonly IUnitOfWork _unitOfWork;
+
+        public DeleteProject(IUnitOfWork unitOfWork)
+        {
+            _unitOfWork = unitOfWork;
+        }
         [FunctionName("DeleteProject")]
         [OpenApiOperation(operationId: "Run", tags: new[] { "Projects API" })]
         [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(DeleteRequest), Description = "The request data.")]
 
-        public static async Task<IActionResult> DeleteProjectFunction(
+        public async Task<IActionResult> DeleteProjectFunction(
             [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "DeleteProject")] HttpRequest req,
             ILogger log,ExecutionContext context)
         {            
             try
             {
-                var conn = Environment.GetEnvironmentVariable("DBConnections");
-                var optionsBuilder = new DbContextOptionsBuilder<SQLDBContext>();
-                optionsBuilder.UseSqlServer(conn);
-
-                using var dbContext = new SQLDBContext(optionsBuilder.Options);
-
-                
 
                 string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
                 var updatedData = Newtonsoft.Json.JsonConvert.DeserializeObject<Projects>(requestBody);
 
                 int idFromRequestBody = updatedData.Id;
+              
+                var data = await _unitOfWork.Projects.DeleteAsync(idFromRequestBody);
 
-                var projectToUpdate = await dbContext.Projects.FindAsync(idFromRequestBody);
 
-                if (projectToUpdate == null || projectToUpdate.isDeleted == true)
+                if(data == 1)
                 {
-                    return new NotFoundObjectResult("Project Id " + idFromRequestBody + " Not Found!!!");
+                    log.LogInformation("C# HTTP trigger function Project of Id " + idFromRequestBody + " Deleted Successfully!!!");
+
+                    var responseMessage = "Project Deleted successfully!!!";
+
+                    var responseObject = new { Id = updatedData.Id, Message = responseMessage }; //, Id = _input_data.Id, Data = _input_data 
+                    return new ObjectResult(responseObject)
+                    {
+                        StatusCode = (int)HttpStatusCode.OK
+                    };
                 }
+                var responseMessageNotFound = "Project Id " + idFromRequestBody + " Not Found!!!";
 
-                projectToUpdate.isDeleted = true;
-                projectToUpdate.isActive = false;
+                var responseNotFoundObject = new { Id = updatedData.Id, Message = responseMessageNotFound }; //, Id = _input_data.Id, Data = _input_data 
+                return new ObjectResult(responseNotFoundObject)
+                {
+                    StatusCode = (int)HttpStatusCode.NotFound
+                };
 
-                await dbContext.SaveChangesAsync();
 
-                log.LogInformation("C# HTTP trigger function Project of Id " + idFromRequestBody + " Deleted Successfully!!!");
-
-                return new OkObjectResult("Project Deleted Successfully of Id "+ idFromRequestBody);
+                //return new OkObjectResult("Project Deleted Successfully of Id "+ idFromRequestBody);
 
             }
             catch (Exception ex)
